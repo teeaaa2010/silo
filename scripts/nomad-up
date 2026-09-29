@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Bring up the full environment from the repo alone and record how long it took.
+source "$(dirname "$0")/lib.sh"
+start_ts=$(date +%s)
+need nomad; need docker; need sudo; need openssl; need curl
+docker info >/dev/null 2>&1 || die "docker is not usable by this user (add yourself to the docker group)"
+installed="$(nomad version | head -n1 | sed -E 's/^Nomad v([0-9.]+).*/\1/')"
+[ "$installed" = "$NOMAD_VERSION" ] || die "Nomad $installed installed, $NOMAD_VERSION pinned. Run scripts/install-nomad.sh"
+image="$(silo_image)"
+
+sudo mkdir -p "$BASE_DIR/main" "$BASE_DIR/client2" "$BASE_DIR/silo-data"
+mkdir -p "$RUN_DIR"
+
+start_agent main "$ROOT/nomad/agents/main.hcl"
+wait_for "Nomad API" 60 nomad node status
+start_agent client2 "$ROOT/nomad/agents/client2.hcl"
+wait_for "both clients ready" 90 two_clients_ready
+log "both clients are ready"
+
+"$ROOT/scripts/init-secrets.sh"
+
+log "deploying Silo ($image)"
+nomad job run -detach -var "silo_image=$image" "$ROOT/nomad/jobs/silo.nomad.hcl" >/dev/null
+wait_for "Silo health endpoint" 180 silo_live
+log "Silo is live"
+
+"$ROOT/scripts/provision-test-creds.sh"
+"$ROOT/scripts/smoke-test.sh"
+
+elapsed=$(( $(date +%s) - start_ts ))
+echo "$elapsed" > "$RUN_DIR/last-up-seconds"
+log "environment up in ${elapsed}s (image pulls are included; note whether they were cached)"

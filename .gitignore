@@ -1,0 +1,21 @@
+# runtime state (never commit)
+.run/
+.nomad-data/
+# secrets and local overrides
+*.env.local
+*.local
+secrets/
+*.pem
+*.key
+*.p12
+.env
+.env.*
+!.env.example
+# real var files (only *.example is committed)
+*.vars
+!*.vars.example
+# editors / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp

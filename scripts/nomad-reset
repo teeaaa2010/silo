@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Destroy everything (agents, Nomad state, Silo data, run files). Add --yes to skip the prompt.
+source "$(dirname "$0")/lib.sh"
+if [ "${1:-}" != "--yes" ]; then
+  read -r -p "This deletes $BASE_DIR (Nomad state and Silo data) and $RUN_DIR. Continue? [y/N] " a
+  [[ "$a" =~ ^[Yy]$ ]] || die "aborted"
+fi
+"$ROOT/scripts/nomad-down" || true
+sudo rm -rf "$BASE_DIR" "$RUN_DIR"
+log "reset complete. Rebuild with scripts/nomad-up"

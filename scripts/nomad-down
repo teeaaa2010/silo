@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Stop jobs and agents. Data under /opt/silo-nomad is kept (use nomad-reset to wipe it).
+source "$(dirname "$0")/lib.sh"
+if nomad node status >/dev/null 2>&1; then
+  log "stopping jobs"
+  nomad job stop -purge -detach silo >/dev/null 2>&1 || true
+  sleep 3
+fi
+stop_agent client2
+stop_agent main
+log "down"
